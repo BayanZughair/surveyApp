@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>Survay App</title>
+	</head>
+	<body>
+	</body>
+	<script>
+		window.addEventListener('DOMContentLoaded', (event) => {
+			fetch('/surveyApp/api/survey/')
+			.then(response => response.json())
+			.then(data => insertSurvayHtml(data))
+			.catch(err => console.log(err));
+		});
+		function survaySubmit(event){
+			event.preventDefault();
+			const option = votedOption(this.vote)
+			if(!option)
+			{
+				alert("You didn't check any of the options!!");
+				return;
+			}
+			fetch('/surveyApp/api/survey/',{
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({'vote': option}),
+				method: 'POST'
+			})
+			.then(response => response.json())
+			.then(data => insertSurvayHtml(data))
+			.catch(err => console.log(err));
+		}
+		function insertSurvayHtml(data){
+			//get body element
+			const bodyElem = document.getElementsByTagName('body')[0];
+
+			//clear body first
+			bodyElem.innerHTML = '';
+
+			//check for error
+			if(data.error)
+			{
+				bodyElem.innerHTML = `<h3>${data.error}</h3>`;
+				return;
+			}
+
+			//insert survay question
+			bodyElem.insertAdjacentHTML('beforeend', questionHtml(data.question));
+
+			//insert voting form if this domain didn't vote yet
+			if(!data.voted){
+				bodyElem.insertAdjacentHTML('beforeend', formHtml(Object.keys(data.optionsAndVotes)));
+				bodyElem.getElementsByTagName('form')[0].addEventListener('submit', survaySubmit);
+			}
+			else
+				bodyElem.insertAdjacentHTML('beforeend', '<h2>Thanks for voting!</h2>');
+			
+			//insert survay results so far
+			bodyElem.insertAdjacentHTML('beforeend', resultsHtml(Object.keys(data.optionsAndVotes), Object.values(data.optionsAndVotes)));
+		}
+		function questionHtml(question){
+			return '<h1>' + question + '</h1>';
+		}
+		function formHtml(options){
+			let html = '<form>';
+			for(let i = 0;i < options.length;i++)
+			{
+				const id = options[i].replaceAll(' ', '-');
+				html += `<input type="radio" name="vote" id="${id}" value="${options[i]}"></input>
+				<label for"${id}">${options[i]}</label><br>`;
+			}
+			html += '<br><button type="submit">Submit</button><br></form>';
+			return html;
+		}
+		function resultsHtml(options, votes){
+			let html = `<h2>Results so far:</h2>${options[0]} - ${votes[0]}`;
+			for(let i = 1;i < options.length;i++)
+				html += `, ${options[i]} - ${votes[i]}`;
+			return html;
+		}
+		function votedOption(radioOptions){
+			for(const radioOption of radioOptions)
+				if(radioOption.checked)
+					return radioOption.value;
+			return null;
+		}
+	</script>
+</html>
